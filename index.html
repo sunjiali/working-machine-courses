@@ -602,7 +602,8 @@ scene.background = new THREE.Color(0xF3EDDC);
 scene.fog = new THREE.Fog(0xF3EDDC, 19, 46);
 const camera = new THREE.PerspectiveCamera(42, 1.7, 0.1, 100);
 camera.position.set(5.0, 3.4, 6.2);
-const renderer = new THREE.WebGLRenderer({ antialias:true });
+const REC_MODE = new URLSearchParams(location.search).has('rec');   // 录制模式：软件渲染下关 MSAA、降阴影图尺寸（默认打开无此参数，呈现不变）
+const renderer = new THREE.WebGLRenderer({ antialias: !REC_MODE });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -638,7 +639,7 @@ renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate 
 scene.add(new THREE.HemisphereLight(0xffffff, 0xcfc4a4, 0.5));
 const key = new THREE.DirectionalLight(0xffffff, 2.3);
 key.position.set(6, 10, 5); key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
+key.shadow.mapSize.set(REC_MODE ? 1024 : 2048, REC_MODE ? 1024 : 2048);
 key.shadow.camera.left = -7; key.shadow.camera.right = 7;
 key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
 key.shadow.camera.near = 2; key.shadow.camera.far = 30;
