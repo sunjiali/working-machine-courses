@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>继电器怎么工作 · 元件级 Working Machine</title>
+<style>
+  :root{
+    --paper:#F5F1E8; --gridln:rgba(22,23,26,.10);
+    --card:#FFFEF8; --cardln:#16171A;
+    --ink:#16171A; --dim:#4C4A44;
+    --teal:#5D8A1E; --navy:#16171A; --labnavy:#16171A;
+    --green:#5D8A1E; --amber:#16171A; --red:#16171A;
+    --acid:#D9F24F; --matcha:#A6CF5F;
+    --radius:16px; --shadow:0 2px 10px rgba(22,23,26,.08),0 10px 28px rgba(22,23,26,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background-color:var(--paper);background-image:linear-gradient(var(--gridln) 1px,transparent 1px),linear-gradient(90deg,var(--gridln) 1px,transparent 1px);background-size:30px 30px;color:var(--ink);font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;line-height:1.6;overflow:hidden}
+  button{font-family:inherit}
+  #app{display:flex;height:100dvh;width:100%}
+  #main{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:14px 16px 12px 4px}
+  #rail{width:72px;flex:none;margin:14px 8px 12px 12px;background:#EFE9DB;border:1px solid var(--cardln);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:6px;box-shadow:var(--shadow);z-index:20}
+  .ric{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border:none;background:transparent;border-radius:12px;font-size:20px;color:var(--ink)}
+  .ric.active{background:#fff;box-shadow:0 1px 5px rgba(22,23,26,.15);color:var(--teal)}
+  .rsep{width:34px;border-top:1px dashed #B9B4A6;margin:4px 0}.rspacer{flex:1}
+  #topbar{display:flex;align-items:center;gap:14px;flex:none}
+  .titleblock h1{font-size:30px;font-weight:800;letter-spacing:3px;line-height:1.15;white-space:nowrap}
+  .titleblock .sub{font-size:13px;letter-spacing:4px;color:var(--dim);margin-top:2px}
+  .topspacer{flex:1}
+  .topcard{background:var(--card);border:1px solid var(--cardln);border-radius:14px;box-shadow:var(--shadow);padding:9px 16px;min-width:216px}
+  .topcard .tc-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--dim);letter-spacing:1px}
+  .topcard .tc-h b{font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .progbar{height:7px;background:#EFE9DB;border-radius:5px;overflow:hidden;margin:7px 0 6px}
+  .progbar i{display:block;height:100%;width:0%;background:var(--teal);border-radius:5px;transition:width .35s ease}
+  .statusrow{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+  .sdot{width:9px;height:9px;border-radius:50%;background:#B9B4A6;flex:none}
+  .sdot.ok{background:var(--green);box-shadow:0 0 7px rgba(93,138,30,.55)}
+  .sdot.warn{background:var(--amber);box-shadow:0 0 7px rgba(22,23,26,.55)}
+  .sdot.bad{background:var(--red);box-shadow:0 0 7px rgba(22,23,26,.55)}
+  .datecard{min-width:158px}.datecard .d1{font-size:14.5px;font-weight:700}.datecard .d2{font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:1px}
+  #middle{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px}
+  #stage{display:flex;min-width:0;min-height:0}
+  .viewport{position:relative;flex:1;min-height:0;border:1.5px solid #16171A;border-radius:var(--radius);overflow:hidden;background:radial-gradient(1100px 560px at 50% 26%,#FFFEF8 0%,#F5F1E8 72%);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center}
+  #machineFrame{position:relative;width:min(100%,calc((100dvh - 350px)*1.6129));max-height:100%;aspect-ratio:1000/620;margin:auto}
+  #machineSvg{display:block;width:100%;height:100%}
+  .hint{position:absolute;left:12px;top:12px;font-size:12px;color:#4C4A44;background:rgba(255,255,255,.88);border:1px solid var(--cardln);padding:4px 11px;border-radius:999px;z-index:4}
+  .toolbar{position:absolute;left:12px;bottom:12px;z-index:6;display:flex;gap:2px;background:#fff;border:1px solid var(--cardln);border-radius:999px;padding:5px;box-shadow:0 6px 20px rgba(22,23,26,.16)}
+  .demobtn{position:absolute;right:14px;bottom:12px;z-index:7;border:1.5px solid var(--cardln);background:var(--acid);color:var(--ink);border-radius:999px;padding:8px 20px;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;box-shadow:0 6px 20px rgba(22,23,26,.16)}
+  .demobtn:hover{background:var(--matcha)}
+  .demobtn:disabled{cursor:wait;opacity:.75}
+  body.demo-running .step{pointer-events:none}
+  .toolbar button{border:none;background:transparent;min-width:38px;height:32px;border-radius:999px;font-size:15px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0 10px}
+  .toolbar button:hover,.toolbar button.active{background:#D9F24F;color:var(--teal)}
+  .toolbar button.wide{font-size:12.5px;font-weight:700;letter-spacing:1px}
+  .minimap{position:absolute;right:14px;top:14px;width:92px;height:70px;z-index:5;background:#EFE9DB;border:1px solid #16171A;border-radius:10px;overflow:hidden}
+  .minimap .mm-board{position:absolute;left:50%;top:50%;width:46px;height:30px;margin:-15px 0 0 -23px;border:1.5px solid #5D8A1E;border-radius:4px;background:rgba(255,255,255,.45)}
+  .minimap .mm-dia{position:absolute;left:50%;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;background:#A6CF5F;transform:rotate(45deg);border-radius:2px}
+  .minimap .mm-lab{position:absolute;left:6px;top:4px;font-size:9.5px;color:#5D8A1E;letter-spacing:1px}
+  #rightcol{display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0}
+  .card{background:var(--card);border:1px solid var(--cardln);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 16px 12px}
+  .card h3{font-size:18px;font-weight:800;letter-spacing:.5px;margin-bottom:4px}
+  #infoPanel{flex:1.10;min-height:0;display:flex;flex-direction:column}
+  #labCard{flex:1.04;min-height:0;display:flex;flex-direction:column;background:var(--labnavy);border-color:#16171A;color:#F5F1E8}
+  #labCard h3{color:#fff}
+  .scrollbox{overflow-y:auto;min-height:0;padding-right:2px}.scrollbox::-webkit-scrollbar{width:6px}.scrollbox::-webkit-scrollbar-thumb{background:#B9B4A6;border-radius:4px}
+  .tabs{display:flex;gap:6px;margin-bottom:4px}
+  .tab{border:1px solid var(--cardln);background:#FFFEF8;color:var(--dim);border-radius:999px;padding:4px 15px;font-size:13px;font-weight:700;cursor:pointer}
+  .tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
+  .question{font-size:13px;line-height:1.45;color:#16171A;background:#EFE9DB;border:1px solid #16171A;border-radius:10px;padding:6px 11px}
+  .question b{color:var(--navy)}
+  .tipbar{display:flex;gap:8px;align-items:flex-start;background:#F5F1E8;border:1px solid #16171A;border-left:3px solid var(--teal);border-radius:9px;padding:6px 11px;font-size:12.5px;line-height:1.45;min-height:44px;margin-top:5px}
+  .tipbar b{color:var(--navy);white-space:nowrap}
+  .tour{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:5px 0 2px}
+  .step{padding:5px 8px;line-height:1.35;border-radius:10px;border:1px solid var(--cardln);background:#FFFEF8;font-size:12.5px;text-align:center;color:var(--dim);cursor:not-allowed}
+  .step .n{display:block;font-size:10.5px;letter-spacing:1px;opacity:.75}
+  .step.done{color:var(--teal);border-color:#A6CF5F;background:#F5F1E8;cursor:not-allowed}
+  .step.next{color:#fff;background:var(--navy);border-color:var(--navy);font-weight:700;cursor:pointer;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(166,207,95,.55)}50%{box-shadow:0 0 0 6px rgba(166,207,95,0)}}
+  .gauge{margin-bottom:4px}.gauge .row{display:flex;justify-content:space-between;font-size:13px;line-height:1.4;margin-bottom:2px}.gauge .val{font-variant-numeric:tabular-nums;font-weight:700}
+  .bar{height:5px;background:#EFE9DB;border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;width:0%;border-radius:5px;background:var(--green)}
+  .kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:2.5px 0;border-bottom:1px dashed #D9D4C3}.kv:last-child{border-bottom:none}.kv b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+  .partdetail{border:1px solid var(--cardln);background:#FFFEF8;border-radius:11px;padding:11px 12px;margin-top:10px}
+  .partdetail .ph{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px}.partdetail p{font-size:12.5px;color:#4C4A44;line-height:1.55;margin-top:5px}.partdetail .pf{font-size:12px;color:#16171A;border-top:1px dashed var(--cardln);padding-top:7px;margin-top:7px;line-height:1.5}
+  .bigidea{margin-top:12px;border-left:3px solid var(--teal);background:#EFE9DB;padding:9px 12px;border-radius:0 9px 9px 0;font-size:13.5px}.bigidea b{color:var(--teal);margin-right:7px;letter-spacing:1px}
+  .specnote{font-size:12px;color:var(--dim);line-height:1.6;margin-top:8px}
+  .labintro{font-size:12.5px;color:#B9B4A6;line-height:1.45}
+  .switchrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4.5px 0;border-top:1px dashed #3A372C;font-size:13px}
+  .switchrow small{display:block;color:#B9B4A6;font-size:11.5px;margin-top:1px;line-height:1.38}
+  .sw{position:relative;width:44px;height:24px;flex:none;cursor:pointer}.sw input{opacity:0;width:0;height:0}.sw .tr{position:absolute;inset:0;background:#3A372C;border-radius:999px;transition:.2s}.sw .tr::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#F5F1E8;border-radius:50%;transition:.2s}.sw input:checked + .tr{background:#D9F24F}.sw input:checked + .tr::before{transform:translateX(20px);background:#16171A}
+  .labstatus{border:1px solid #3A372C;background:#29271F;border-radius:11px;padding:6px 12px;margin-top:5px}
+  .labstatus .ls{font-size:14px;font-weight:800;color:#fff}.labstatus .ld{font-size:12px;color:#B9B4A6;line-height:1.4;margin-top:2px}
+  .labstatus.warn{border-color:#D9F24F}.labstatus.bad{border-color:#D9F24F;background-color:#16171A;background-image:repeating-linear-gradient(45deg,rgba(217,242,79,.20) 0 8px,transparent 8px 16px)}
+  .labbtns{display:flex;gap:8px;margin-top:7px}.rbtn{border:1px solid #4C4A44;background:#29271F;color:#F5F1E8;border-radius:9px;padding:6px 13px;font-size:12.5px;cursor:pointer}.rbtn:hover{border-color:#D9F24F;color:#D9F24F}
+  #carouselWrap{flex:none;display:flex;align-items:stretch;gap:10px}
+  .carbtn{width:38px;flex:none;border:1px solid var(--cardln);background:var(--card);border-radius:50%;font-size:17px;color:var(--dim);cursor:pointer;align-self:center;height:38px;box-shadow:var(--shadow)}
+  #lessonList{flex:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0}
+  .lcard{position:relative;display:flex;align-items:center;gap:13px;background:var(--card);border:1.5px solid var(--cardln);border-radius:14px;padding:12px 16px;cursor:pointer;box-shadow:var(--shadow);min-width:0;text-align:left;color:var(--ink)}
+  .lcard.active{border-color:var(--teal)}.lcard .licon{font-size:27px;line-height:1;flex:none}.lcard .lk{font-size:11px;letter-spacing:2px;color:var(--dim)}.lcard .lt{font-size:16.5px;font-weight:800;margin:1px 0}.lcard .ld{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* U7: NC comparison + quiz */
+  .ncview{border:1px solid var(--cardln);background:#FFFEF8;border-radius:11px;padding:11px 12px;margin-top:10px}
+  .ncview .nch{font-weight:800;font-size:14px;margin-bottom:7px}
+  .ncgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .nccell{border:1px solid #D9D4C3;border-radius:9px;padding:8px 9px;background:#F5F1E8}
+  .nccell.active{border-color:var(--teal);background:#fff;box-shadow:0 0 0 2px rgba(166,207,95,.45)}
+  .nccell .nct{font-size:12px;font-weight:800;letter-spacing:.5px;margin-bottom:4px}
+  .nccell .ncd{font-size:12px;color:#4C4A44;line-height:1.5;margin-top:4px}
+  .nccell .ncd b{color:var(--ink)}
+  .quiz{border:1px solid var(--cardln);background:#EFE9DB;border-radius:11px;padding:11px 12px;margin-top:10px}
+  .quiz .qh{font-weight:800;font-size:14px;margin-bottom:5px}
+  .quiz .qq{font-size:13px;line-height:1.6;color:#16171A}
+  .quiz .qq b{font-variant-numeric:tabular-nums}
+  .quizopts{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+  .qopt{border:1.5px solid var(--cardln);background:#FFFEF8;color:var(--ink);border-radius:999px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer}
+  .qopt:hover{background:var(--acid)}
+  .qopt.right{background:var(--navy);border-color:var(--navy);color:#fff}
+  .qopt.wrong{background:#fff;border-color:var(--ink);color:var(--ink);text-decoration:line-through}
+  .quizfb{margin-top:9px;font-size:12.5px;line-height:1.6;border-radius:9px;padding:8px 11px;background:#fff;border:1px solid var(--cardln)}
+  .quizfb.ok{border-left:3px solid var(--teal)}
+  .quizfb.no{border-left:3px solid var(--ink)}
+  /* SVG */
+  .svg-title{font-size:15px;font-weight:700;fill:#4C4A44;letter-spacing:2px}
+  .svg-label{font-size:16px;font-weight:700;fill:#16171A}
+  .svg-small{font-size:12.5px;fill:#6E6852}
+  .svg-value{font-size:15px;font-weight:800;fill:#5D8A1E;font-variant-numeric:tabular-nums}
+  .svg-value.load{fill:#16171A}.svg-danger{font-size:14px;font-weight:800;fill:#16171A}
+  .leader{stroke:#4C4A44;stroke-width:1.2;stroke-dasharray:4 4;fill:none}
+  .wire{stroke:#4C4A44;stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .wire.loadwire{stroke:#16171A}
+  .flowdot{fill:#5D8A1E;stroke:#fff;stroke-width:1.4}.flowdot.load{fill:#5D8A1E}
+  .hotspot{cursor:pointer}.hotspot .hit{fill:transparent}.hotspot .dot{fill:#fff;stroke:#5D8A1E;stroke-width:2.4}.hotspot text{font-size:13px;font-weight:800;fill:#5D8A1E;text-anchor:middle;dominant-baseline:central;pointer-events:none}.hotspot:hover .dot{fill:#D9F24F}.hotspot.selected .dot{fill:#5D8A1E}.hotspot.selected text{fill:#fff}.hotspot .ring{fill:none;stroke:#5D8A1E;stroke-width:2;opacity:0}.hotspot.selected .ring{opacity:.55}
+  .coverHidden{opacity:.08!important}
+  .labelsHidden{display:none!important}
+  @media (max-width:900px){
+    body{overflow:auto}#app{display:block;height:auto}#rail{display:none}#main{padding:10px}.titleblock h1{font-size:24px;letter-spacing:1px}.topcard.datecard{display:none}.topcard{min-width:0;flex:1}
+    #middle{display:flex;flex-direction:column}.viewport{min-height:300px}#machineFrame{width:100%}#rightcol{min-height:0}.card{min-height:0}.scrollbox{overflow:visible}
+    #lessonList{grid-template-columns:1fr}.lcard .ld{white-space:normal}.minimap{display:none}.toolbar{bottom:6px}.hint{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="rail" aria-label="课程导航">
+    <button class="ric active" title="元件实验室">⌘</button>
+    <button class="ric" title="课程">▦</button>
+    <button class="ric" title="剖面">◎</button>
+    <div class="rsep"></div>
+    <button class="ric" title="模型">ƒ</button>
+    <button class="ric" title="故障">⚠</button>
+    <div class="rspacer"></div>
+    <button class="ric" title="重开" id="railReset">↺</button>
+  </nav>
+
+  <main id="main">
+    <header id="topbar">
+      <div class="titleblock">
+        <h1>RELAY 继电器课</h1>
+        <div class="sub">小电流怎样指挥大电流</div>
+      </div>
+      <div class="topspacer"></div>
+      <div class="topcard">
+        <div class="tc-h"><span>导览进度</span><b id="progText">0 / 4 步</b></div>
+        <div class="progbar"><i id="progFill"></i></div>
+        <div class="statusrow"><span class="sdot" id="statusDot"></span><span id="statusText">待机：触点分开</span></div>
+      </div>
+      <div class="topcard datecard">
+        <div class="d1" id="dateLine">元件实验室</div>
+        <div class="d2" id="clockLine">剖面 · 模型 · 故障</div>
+      </div>
+    </header>
+
+    <section id="middle">
+      <div id="stage">
+        <div class="viewport" id="viewport">
+          <div id="machineFrame">
+            <svg id="machineSvg" viewBox="0 0 1000 620" role="img" aria-label="继电器剖面：线圈通电后吸动衔铁，带动触点接通负载电机">
+              <defs>
+                <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFEF8"/><stop offset=".5" stop-color="#D9D4C3"/><stop offset="1" stop-color="#9A9582"/></linearGradient>
+                <linearGradient id="darkSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C4A44"/><stop offset="1" stop-color="#16171A"/></linearGradient>
+                <linearGradient id="copper" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A6CF5F"/><stop offset=".5" stop-color="#D9F24F"/><stop offset="1" stop-color="#5D8A1E"/></linearGradient>
+                <linearGradient id="bobbin" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFEF8"/><stop offset="1" stop-color="#EFE9DB"/></linearGradient>
+                <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="10" stroke="#B9B4A6" stroke-width="2"/></pattern>
+                <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+
+              <text x="255" y="38" class="svg-title">剖面图 · 铰链式电磁继电器</text>
+              <text x="878" y="38" text-anchor="end" class="svg-small">透明盖已剖开</text>
+
+              <!-- base and housing -->
+              <g id="housingGroup">
+                <rect x="66" y="60" width="674" height="446" rx="24" fill="rgba(255,255,255,.30)" stroke="#16171A" stroke-width="2"/>
+                <path d="M610 60 L740 60 L740 118" fill="none" stroke="url(#hatch)" stroke-width="14" opacity=".55"/>
+                <rect x="52" y="500" width="902" height="30" rx="9" fill="#16171A"/>
+                <rect x="72" y="512" width="862" height="5" rx="2" fill="#9A9582" opacity=".65"/>
+              </g>
+
+              <!-- control and load wires behind mechanisms -->
+              <path id="controlPathA" class="wire" d="M118 552 H198 L238 512 V480 H276 V438"/>
+              <path id="controlPathB" class="wire" d="M326 438 V480 H398 L424 512 V552 H168"/>
+              <path id="loadPathA" class="wire" d="M782 552 H742 V302 H690 V250"/>
+              <path id="loadPathB" class="wire" d="M505 286 V452 H788 V374"/>
+              <g id="flowDots"></g>
+
+              <!-- coil / core -->
+              <g id="coilAssembly">
+                <path d="M205 438 V176 Q205 148 234 148 H366 Q395 148 395 176 V438" fill="none" stroke="#4C4A44" stroke-width="15"/>
+                <rect x="219" y="142" width="162" height="300" rx="20" fill="url(#bobbin)" stroke="#16171A" stroke-width="2"/>
+                <g id="coilWindings" stroke="url(#copper)" stroke-width="11" fill="none" stroke-linecap="round">
+                  <path d="M232 180 C258 164 342 164 368 180"/><path d="M232 207 C258 191 342 191 368 207"/>
+                  <path d="M232 234 C258 218 342 218 368 234"/><path d="M232 261 C258 245 342 245 368 261"/>
+                  <path d="M232 288 C258 272 342 272 368 288"/><path d="M232 315 C258 299 342 299 368 315"/>
+                  <path d="M232 342 C258 326 342 326 368 342"/><path d="M232 369 C258 353 342 353 368 369"/>
+                  <path d="M232 396 C258 380 342 380 368 396"/>
+                </g>
+                <rect x="273" y="158" width="54" height="268" rx="9" fill="url(#steel)" stroke="#4C4A44" stroke-width="2"/>
+                <rect x="252" y="430" width="18" height="48" fill="#4C4A44"/><rect x="330" y="430" width="18" height="48" fill="#4C4A44"/>
+                <g id="coilBreak" opacity="0">
+                  <path d="M224 276 L272 258 L292 282 L330 256 L378 278" stroke="#16171A" stroke-width="17" fill="none"/>
+                  <path d="M232 274 L270 262 L291 278 L326 260 L368 274" stroke="#D9F24F" stroke-width="4" fill="none" stroke-dasharray="7 5"/>
+                  <text x="300" y="246" text-anchor="middle" class="svg-danger">绕组断口</text>
+                </g>
+              </g>
+
+              <!-- magnetic field -->
+              <g id="fieldArcs" fill="none" stroke="#A6CF5F" stroke-width="3" stroke-linecap="round" opacity="0">
+                <path d="M356 184 C430 128 520 126 592 168"/>
+                <path d="M360 218 C438 166 516 164 584 198"/>
+                <path d="M362 254 C432 214 506 210 570 232"/>
+              </g>
+
+              <!-- spring, dynamically redrawn -->
+              <path id="springPath" fill="none" stroke="#4C4A44" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="442" y="54" width="42" height="20" rx="5" fill="url(#darkSteel)"/>
+              <text x="500" y="42" class="svg-small">固定端</text>
+
+              <!-- hinge + armature + pusher -->
+              <g id="hinge">
+                <path d="M402 180 L402 116 L446 116 L446 180 Z" fill="url(#darkSteel)"/>
+                <circle cx="424" cy="143" r="11" fill="#F5F1E8" stroke="#16171A" stroke-width="4"/>
+              </g>
+              <g id="armatureGroup">
+                <rect x="336" y="127" width="330" height="31" rx="9" fill="url(#steel)" stroke="#4C4A44" stroke-width="2"/>
+                <rect x="352" y="136" width="118" height="5" rx="2" fill="#FFFFFF" opacity=".45"/>
+                <text x="372" y="118" text-anchor="middle" class="svg-small">衔铁</text>
+              </g>
+              <rect id="pusher" x="620" y="158" width="19" height="92" rx="7" fill="#FFFFFF" stroke="#4C4A44" stroke-width="2"/>
+              <text x="714" y="202" class="svg-small">绝缘推杆</text>
+              <line x1="642" y1="202" x2="708" y2="202" stroke="#8A8474" stroke-dasharray="4 4"/>
+
+              <!-- contacts -->
+              <g id="contactAssembly">
+                <rect x="676" y="150" width="28" height="68" fill="url(#darkSteel)"/>
+                <circle id="fixedContact" cx="690" cy="224" r="13" fill="#EFE9DB" stroke="#4C4A44" stroke-width="3"/>
+                <g id="movingBlade">
+                  <path d="M505 286 C570 272 625 258 677 250" fill="none" stroke="#A6CF5F" stroke-width="10" stroke-linecap="round"/>
+                  <circle id="movingContact" cx="690" cy="252" r="13" fill="#D9F24F" stroke="#5D8A1E" stroke-width="3"/>
+                </g>
+                <path id="contactGlow" d="M672 238 L690 224 L708 238 L690 252 Z" fill="#D9F24F" opacity="0" filter="url(#softGlow)"/>
+                <g id="weldBlob" opacity="0">
+                  <path d="M674 238 C680 224 690 232 696 226 C706 235 702 246 694 252 C684 258 672 250 674 238" fill="#16171A" stroke="#D9F24F" stroke-width="3"/>
+                  <text x="690" y="292" text-anchor="middle" class="svg-danger">熔接在一起</text>
+                </g>
+                <rect x="486" y="276" width="38" height="34" rx="6" fill="url(#darkSteel)"/>
+              </g>
+
+              <!-- load motor -->
+              <g id="motor">
+                <rect x="780" y="360" width="130" height="28" rx="8" fill="url(#darkSteel)"/>
+                <circle cx="845" cy="294" r="72" fill="#FFFEF8" stroke="#4C4A44" stroke-width="5"/>
+                <circle cx="845" cy="294" r="55" fill="#F5F1E8" stroke="#D9D4C3" stroke-width="2"/>
+                <g id="motorRotor" stroke="#16171A" stroke-width="11" stroke-linecap="round">
+                  <line x1="845" y1="294" x2="845" y2="252"/><line x1="845" y1="294" x2="881" y2="315"/><line x1="845" y1="294" x2="809" y2="315"/>
+                </g>
+                <circle cx="845" cy="294" r="13" fill="url(#darkSteel)"/>
+                <text x="845" y="402" text-anchor="middle" class="svg-label">负载电机</text>
+                <text x="845" y="424" text-anchor="middle" class="svg-small">48 V DC</text>
+              </g>
+
+              <!-- labels / leaders -->
+              <g id="svgLabels">
+                <line class="leader" x1="238" y1="290" x2="130" y2="290"/><text x="124" y="278" text-anchor="end" class="svg-label">线圈</text><text x="124" y="300" text-anchor="end" class="svg-small">通电生磁</text>
+                <line class="leader" x1="690" y1="190" x2="690" y2="104"/><text x="690" y="88" text-anchor="middle" class="svg-label">静触点</text>
+                <line class="leader" x1="660" y1="258" x2="610" y2="330"/><text x="604" y="348" text-anchor="end" class="svg-label">动触点</text>
+                <line class="leader" x1="505" y1="286" x2="462" y2="356"/><text x="456" y="374" text-anchor="end" class="svg-small">触点簧片</text>
+                <text x="300" y="495" text-anchor="middle" class="svg-small">线圈端子</text>
+                <text x="548" y="92" class="svg-small">复位弹簧</text>
+              </g>
+
+              <!-- sources / switches -->
+              <g id="controlSource">
+                <rect x="76" y="532" width="84" height="38" rx="8" fill="#FFFEF8" stroke="#4C4A44" stroke-width="2"/>
+                <text x="118" y="557" text-anchor="middle" class="svg-label">12 V</text>
+                <line id="controlSwitch" x1="198" y1="552" x2="232" y2="552" stroke="#16171A" stroke-width="5" stroke-linecap="round"/>
+                <circle cx="198" cy="552" r="5" fill="#16171A"/><circle cx="238" cy="512" r="4" fill="#16171A"/>
+                <text x="205" y="586" class="svg-small">控制开关</text>
+                <text id="svgControlCurrent" x="300" y="606" text-anchor="middle" class="svg-value">线圈电流 0 mA</text>
+              </g>
+              <g id="loadSource">
+                <rect x="724" y="532" width="92" height="38" rx="8" fill="#FFFEF8" stroke="#16171A" stroke-width="2"/>
+                <text x="770" y="557" text-anchor="middle" class="svg-label">48 V</text>
+                <text x="770" y="586" text-anchor="middle" class="svg-small">负载电源</text>
+                <text id="svgLoadCurrent" x="855" y="606" text-anchor="middle" class="svg-value load">负载电流 0.00 A</text>
+              </g>
+              <text x="650" y="38" text-anchor="middle" class="svg-small">两套电路隔离 · 只传磁与力</text>
+
+              <!-- hotspots -->
+              <g id="hotspots">
+                <g class="hotspot selected" data-part="coil" transform="translate(300 292)"><circle class="ring" r="25"/><circle class="hit" r="30"/><circle class="dot" r="14"/><text y="1">1</text></g>
+                <g class="hotspot" data-part="armature" transform="translate(520 142)"><circle class="ring" r="25"/><circle class="hit" r="30"/><circle class="dot" r="14"/><text y="1">2</text></g>
+                <g class="hotspot" data-part="spring" transform="translate(522 92)"><circle class="ring" r="25"/><circle class="hit" r="30"/><circle class="dot" r="14"/><text y="1">3</text></g>
+                <g class="hotspot" data-part="contact" transform="translate(690 238)"><circle class="ring" r="25"/><circle class="hit" r="30"/><circle class="dot" r="14"/><text y="1">4</text></g>
+                <g class="hotspot" data-part="load" transform="translate(845 294)"><circle class="ring" r="25"/><circle class="hit" r="30"/><circle class="dot" r="14"/><text y="1">5</text></g>
+              </g>
+            </svg>
+            <div class="hint">点编号看部件 · 按右侧顺序推进</div>
+            <div class="toolbar">
+              <button id="coverToggle" title="显示 / 隐藏透明盖">▣</button>
+              <button id="labelsToggle" class="active" title="显示 / 隐藏标注">T</button>
+              <button id="toolbarReset" class="wide" title="回到断电">↺ 断电</button>
+            </div>
+            <div class="minimap"><div class="mm-lab">剖面</div><div class="mm-board"></div><div class="mm-dia"></div></div>
+          </div>
+          <button class="demobtn" id="demoBtn" title="自动走完四步，再停回待机">▶ 先看它工作一次</button>
+        </div>
+      </div>
+
+      <aside id="rightcol">
+        <section class="card" id="infoPanel">
+          <h3>课程信息</h3>
+          <div class="tabs"><button class="tab active" data-tab="overview">概览</button><button class="tab" data-tab="specs">规格</button></div>
+          <div class="scrollbox">
+            <div id="tabOverview">
+              <div class="question"><b>本课问题：</b>为什么不用手去合大电流开关？让线圈先动，再让触点去扛。</div>
+              <div class="tipbar"><b id="tipStep">先看</b><span id="tipText">线圈、衔铁和触点现在都停在断电位置。</span></div>
+              <div class="tour" id="tourSteps"></div>
+
+              <div class="gauge"><div class="row"><span>线圈电流</span><span class="val" id="gCoilVal">0 mA</span></div><div class="bar"><i id="gCoilBar"></i></div></div>
+              <div class="gauge"><div class="row"><span>磁拉力</span><span class="val" id="gPullVal">0%</span></div><div class="bar"><i id="gPullBar"></i></div></div>
+              <div class="gauge"><div class="row"><span>触点间隙</span><span class="val" id="gGapVal">3.0 mm</span></div><div class="bar"><i id="gGapBar"></i></div></div>
+              <div class="gauge"><div class="row"><span>负载功率</span><span class="val" id="gLoadVal">0 W</span></div><div class="bar"><i id="gLoadBar"></i></div></div>
+
+              <div>
+                <div class="kv"><span>线圈电压</span><b id="rCoilVoltage">0.0 V</b></div>
+                <div class="kv"><span>线圈功率</span><b id="rCoilPower">0.00 W</b></div>
+                <div class="kv"><span>磁场强度（教学映射）</span><b id="rField">0 mT</b></div>
+                <div class="kv"><span>衔铁行程</span><b id="rTravel">0%</b></div>
+                <div class="kv"><span>弹簧回弹力（教学映射）</span><b id="rSpring">30%</b></div>
+                <div class="kv"><span>触点状态</span><b id="rContact">分开</b></div>
+                <div class="kv"><span>负载电压 / 电流</span><b id="rLoadVI">0.0 V / 0.00 A</b></div>
+                <div class="kv"><span>电机转速</span><b id="rMotor">0%</b></div>
+              </div>
+
+              <div class="partdetail" id="partDetail">
+                <div class="ph"><span id="partIcon">🧲</span><span id="partName">线圈与铁芯</span></div>
+                <p id="partText">电流流过绕组，铁芯被磁化。它只负责产生磁拉力，不直接给负载供电。</p>
+                <div class="pf" id="partFault">坏了什么样：线圈断路时，有控制电压也形不成电流和磁场。</div>
+              </div>
+              <div class="bigidea"><b>BIG IDEA</b>继电器不是普通开关，而是用小电流控制大电流的隔离开关。</div>
+
+              <div class="ncview" id="ncView">
+                <div class="nch">对比小视图 · 常闭触点（NC）</div>
+                <div class="ncgrid">
+                  <div class="nccell" id="ncIdleCell">
+                    <div class="nct">未通电 · 线圈无电</div>
+                    <svg viewBox="0 0 200 62" width="100%" height="62" aria-label="常闭触点未通电时闭合">
+                      <line x1="14" y1="34" x2="86" y2="34" stroke="#16171A" stroke-width="4" stroke-linecap="round"/>
+                      <line x1="86" y1="34" x2="168" y2="34" stroke="#5D8A1E" stroke-width="6" stroke-linecap="round"/>
+                      <circle cx="86" cy="34" r="7" fill="#D9F24F" stroke="#5D8A1E" stroke-width="2.5"/>
+                      <circle cx="176" cy="34" r="7" fill="#EFE9DB" stroke="#4C4A44" stroke-width="2.5"/>
+                      <line x1="176" y1="34" x2="192" y2="34" stroke="#16171A" stroke-width="4" stroke-linecap="round"/>
+                      <circle cx="52" cy="34" r="4" fill="#5D8A1E"/><circle cx="128" cy="34" r="4" fill="#5D8A1E"/>
+                    </svg>
+                    <div class="ncd">常闭触点<b>闭合</b>：弹簧把动触点压在静触点上，负载回路<b>接通</b>。这正是「常闭」二字的含义。</div>
+                  </div>
+                  <div class="nccell" id="ncLiveCell">
+                    <div class="nct">通电 · 线圈吸合</div>
+                    <svg viewBox="0 0 200 62" width="100%" height="62" aria-label="常闭触点通电后断开">
+                      <line x1="14" y1="44" x2="86" y2="44" stroke="#16171A" stroke-width="4" stroke-linecap="round"/>
+                      <line x1="86" y1="44" x2="168" y2="18" stroke="#5D8A1E" stroke-width="6" stroke-linecap="round"/>
+                      <circle cx="86" cy="44" r="7" fill="#D9F24F" stroke="#5D8A1E" stroke-width="2.5"/>
+                      <circle cx="176" cy="44" r="7" fill="#EFE9DB" stroke="#4C4A44" stroke-width="2.5"/>
+                      <line x1="176" y1="44" x2="192" y2="44" stroke="#16171A" stroke-width="4" stroke-linecap="round"/>
+                      <text x="128" y="58" text-anchor="middle" font-size="10" fill="#4C4A44">间隙打开</text>
+                    </svg>
+                    <div class="ncd">常闭触点<b>断开</b>：衔铁吸合把动触点拉离静触点，负载回路<b>切断</b>。与主剖面的常开触点正好相反。</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="quiz" id="quizCard">
+                <div class="qh">互动题 · 凭读数判故障</div>
+                <p class="qq">情景：控制开关已经合上，命令推进到第 4 步。实测读数：线圈电压 <b>12.0 V</b>、线圈电流 <b>0 mA</b>、触点<b>分开</b>、负载功率 <b>0 W</b>。这是哪种故障？</p>
+                <div class="quizopts">
+                  <button class="qopt" data-answer="welded">A · 触点粘连</button>
+                  <button class="qopt" data-answer="coilOpen">B · 线圈烧断</button>
+                </div>
+                <div class="quizfb" id="quizFeedback" hidden></div>
+              </div>
+            </div>
+            <div id="tabSpecs" hidden>
+              <div class="kv"><span>结构类型</span><b>铰链式电磁继电器</b></div>
+              <div class="kv"><span>触点形式</span><b>主剖面一组常开触点（教学简化）；常闭仅在对比小视图示意</b></div>
+              <div class="kv"><span>线圈额定电压</span><b>12 V DC</b></div>
+              <div class="kv"><span>线圈电阻</span><b>120 Ω</b></div>
+              <div class="kv"><span>负载电源</span><b>48 V DC</b></div>
+              <div class="kv"><span>负载等效电阻</span><b>19.2 Ω</b></div>
+              <div class="kv"><span>初始触点间隙</span><b>3.0 mm（教学映射）</b></div>
+              <p class="specnote">以上是本课的教学模型参数，用于展示数量级与因果关系，不是某一具体型号的实测规格。真实选型必须查目标型号数据手册，并核对触点材料、负载类型、动作/释放时间和电气寿命。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card lab" id="labCard">
+          <h3>实验室 · 搞坏它</h3>
+          <div class="scrollbox">
+            <p class="labintro">故障不是装饰：每打开一个开关，全部读数都按同一个模型立刻重算。</p>
+            <div class="switchrow">
+              <div>触点粘连<small>触点熔接后，断开控制也分不开负载回路。</small></div>
+              <label class="sw"><input type="checkbox" id="faultWeld"><span class="tr"></span></label>
+            </div>
+            <div class="switchrow">
+              <div>线圈烧断<small>绕组开路，控制电压还在，电流和磁场消失。</small></div>
+              <label class="sw"><input type="checkbox" id="faultCoil"><span class="tr"></span></label>
+            </div>
+            <div class="switchrow">
+              <div>弹簧疲劳<small>回弹力剩约一半：断电释放迟滞，负载多转一会儿才停。</small></div>
+              <label class="sw"><input type="checkbox" id="faultSpring"><span class="tr"></span></label>
+            </div>
+            <div class="labstatus" id="labStatus"><div class="ls" id="labStatusTitle">当前无故障</div><div class="ld" id="labStatusDesc">按导览走完四步，再回来打开故障开关对照读数。</div></div>
+            <div class="kv" style="border-color:#3A372C"><span>电气隔离</span><b id="rIsolation">保持隔离</b></div>
+            <div class="kv" style="border-color:#3A372C"><span>控制侧 / 负载侧</span><b id="rSides">0.00 W / 0 W</b></div>
+            <div class="labbtns"><button class="rbtn" id="repairFaults">修复故障</button><button class="rbtn" id="resetTour">回到断电</button></div>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <footer id="carouselWrap">
+      <button class="carbtn">‹</button>
+      <div id="lessonList">
+        <button class="lcard active" data-part-link="coil"><span class="licon">🧲</span><span><span class="lk">LESSON 01</span><div class="lt">继电器剖面课</div><div class="ld">从线圈开始，沿着磁场找到触点</div></span></button>
+        <button class="lcard" data-part-link="contact"><span class="licon">⚡</span><span><span class="lk">CUTAWAY</span><div class="lt">触点才是承重墙</div><div class="ld">控制侧只下令，触点负责接通大电流</div></span></button>
+        <button class="lcard" data-part-link="load"><span class="licon">🌀</span><span><span class="lk">LOAD SIDE</span><div class="lt">小电流指挥大电流</div><div class="ld">100 mA 控制侧，对照 2.50 A 负载侧</div></span></button>
+      </div>
+      <button class="carbtn">›</button>
+    </footer>
+  </main>
+</div>
+<script>
+'use strict';
+const CONFIG = Object.freeze({
+  coilVoltage: 12,
+  coilResistance: 120,
+  loadVoltage: 48,
+  loadResistance: 19.2,
+  initialGapMm: 3.0,
+  ratedFieldMt: 80
+});
+const STEPS = [
+  { key:'power', n:'STEP 1', title:'通电', tipTitle:'第一步', tip:'先合上控制开关。电流只走线圈这一边，还没有碰到负载。', sound:'click · 电流来了' },
+  { key:'pull', n:'STEP 2', title:'磁吸', tipTitle:'第二步', tip:'铁芯变成电磁铁，磁拉力超过弹簧的阻拦，衔铁被吸过去。', sound:'tok · 衔铁动了' },
+  { key:'contact', n:'STEP 3', title:'触点闭合', tipTitle:'第三步', tip:'绝缘推杆只传力、不导电。它把动触点推到静触点上，负载回路这才接通。', sound:'snap · 触点碰上了' },
+  { key:'load', n:'STEP 4', title:'负载工作', tipTitle:'第四步', tip:'48 V 负载侧开始工作：2.50 A 流过触点，电机达到额定转速。回头看控制侧，它只用了 100 mA。', sound:'whirr · 电机转起来' }
+];
+const PART_INFO = {
+  coil:{ icon:'🧲', name:'线圈与铁芯', text:'电流流过绕组，铁芯被磁化。它只负责产生磁拉力，不直接给负载供电。', fault:'坏了什么样：线圈断路时，有控制电压也形不成电流和磁场。' },
+  armature:{ icon:'↗', name:'衔铁与铰链', text:'衔铁绕铰链转动，是磁场和触点之间的机械信使。它被吸合时，会通过推杆带动触点簧片。', fault:'坏了什么样：铰链卡滞时，线圈有磁也推不动触点。' },
+  spring:{ icon:'⌁', name:'复位弹簧', text:'弹簧平时把衔铁拉回断开位置；磁拉力必须先赢过它，触点才会闭合。断电后，也是它负责把触点分开。', fault:'坏了什么样：弹簧疲劳会让释放变慢，严重时触点分不开。' },
+  contact:{ icon:'⚡', name:'动触点与静触点', text:'真正承受负载电流的是这对金属触点。控制侧下命令，触点负责接通或切断 48 V 负载回路。', fault:'坏了什么样：电弧和过热可让触点熔接粘连，控制断电后负载仍继续工作。' },
+  load:{ icon:'🌀', name:'负载电机', text:'电机在另一套电源上工作。它和线圈没有导线直连，只接受触点给出的通断结果。', fault:'看这里验故障：触点粘连时电机停不下来；线圈烧断时电机根本启动不了。' }
+};
+const NUMERIC_KEYS = ['coilVoltage','coilCurrentMa','coilPower','fieldMt','magneticPull','springLoad','travelPct','gapMm','loadVoltage','loadCurrent','loadPower','motorSpeed'];
+let S = { step:0, welded:false, coilOpen:false, springFatigued:false, selected:'coil' };
+let display = relayModel(S, 1);
+let anim = { from:{...display}, target:{...display}, start:0, duration:760 };
+
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function smooth(t){ t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }
+function relayModel(state, phase = 1){
+  const p = clamp(phase, 0, 1);
+  const commanded = state.step >= 1;
+  const coilVoltage = commanded ? CONFIG.coilVoltage : 0;
+  const coilCurrentA = state.coilOpen ? 0 : (coilVoltage / CONFIG.coilResistance) * (state.step === 1 ? (0.35 + 0.65 * p) : 1);
+  const coilCurrentMa = coilCurrentA * 1000;
+  const magneticPull = state.coilOpen ? 0 : (state.step === 0 ? 0 : state.step === 1 ? 42 * p : state.step === 2 ? 86 : 100);
+  const travel = state.coilOpen ? 0 : (state.step <= 1 ? 0 : state.step === 2 ? 0.68 : 1);
+  const travelPct = travel * 100;
+  const contactClosed = !!state.welded || travel >= 0.999;
+  const gapMm = state.welded ? 0 : CONFIG.initialGapMm * (1 - travel);
+  const loadVoltage = contactClosed ? CONFIG.loadVoltage : 0;
+  const loadCurrent = contactClosed ? CONFIG.loadVoltage / CONFIG.loadResistance : 0;
+  const loadPower = loadVoltage * loadCurrent;
+  const motorSpeed = contactClosed ? (state.welded || state.step >= 4 ? 100 : 55) : 0;
+  // U7 弹簧疲劳：回弹力只剩约 55%——吸合侧读数（电流/间隙/负载）不变，靠回弹力读数与释放迟滞区分。
+  const springFatigued = !!state.springFatigued;
+  const springLoad = (30 + 50 * travel) * (springFatigued ? 0.55 : 1);
+  let status = '待机：触点分开', severity = 'ok', contactState = '分开';
+  if (state.welded) { status = '危险：触点粘连，负载停不下来'; severity = 'bad'; contactState = '粘连闭合'; }
+  else if (state.coilOpen && commanded) { status = '故障：线圈断路，命令到不了触点'; severity = 'bad'; contactState = '分开'; }
+  else if (springFatigued && !commanded) { status = '弹簧疲劳：释放迟滞，断电后负载多转一会儿'; severity = 'warn'; }
+  else if (state.step === 1) status = '线圈通电：磁场建立';
+  else if (state.step === 2) status = '衔铁吸合：间隙正在缩小';
+  else if (state.step === 3) { status = '触点闭合：负载回路接通'; contactState = '闭合'; }
+  else if (state.step >= 4) { status = '负载工作：小电流指挥大电流'; contactState = '闭合'; }
+  if (contactClosed && !state.welded) contactState = '闭合';
+  return {
+    coilVoltage,
+    coilCurrentMa,
+    coilPower: coilVoltage * coilCurrentA,
+    fieldMt: CONFIG.ratedFieldMt * (coilCurrentMa / 100),
+    magneticPull,
+    springLoad,
+    springFatigued,
+    releaseLagMs: springFatigued ? 2600 : 760,
+    travelPct,
+    gapMm,
+    contactClosed,
+    contactState,
+    loadVoltage,
+    loadCurrent,
+    loadPower,
+    motorSpeed,
+    status,
+    severity,
+    commanded,
+    isolated: true
+  };
+}
+function beginTransition(){
+  const target = relayModel(S, 1);
+  // 弹簧疲劳的释放迟滞：目标行程小于当前行程（正在释放）时，过渡拉长到 2600ms，负载多转一会儿才停。
+  const releasing = target.travelPct < display.travelPct - 0.5;
+  const duration = (S.springFatigued && releasing) ? 2600 : 760;
+  anim = { from:{...display}, target, start:performance.now(), duration };
+}
+function currentOutput(now){
+  const raw = anim.duration ? (now - anim.start) / anim.duration : 1;
+  const p = smooth(raw);
+  const out = {...anim.from};
+  for (const k of NUMERIC_KEYS) out[k] = anim.from[k] + (anim.target[k] - anim.from[k]) * p;
+  if (p >= 0.45) {
+    out.contactClosed = anim.target.contactClosed;
+    out.contactState = anim.target.contactState;
+    out.status = anim.target.status;
+    out.severity = anim.target.severity;
+    out.commanded = anim.target.commanded;
+  }
+  out.isolated = true;
+  return out;
+}
+const $ = id => document.getElementById(id);
+const tourEl = $('tourSteps');
+STEPS.forEach((step, i) => {
+  const b = document.createElement('button');
+  b.className = 'step'; b.id = 'stepBtn' + i;
+  b.innerHTML = `<span class="n">${step.n}</span>${step.title}`;
+  b.addEventListener('click', () => advanceStep(i));
+  tourEl.appendChild(b);
+});
+function advanceStep(i){
+  if (i !== S.step || S.step >= 4) return false;
+  S.step += 1; beginTransition(); updateTip(); return true;
+}
+function updateTip(){
+  if (S.step === 0) { $('tipStep').textContent = '先看'; $('tipText').textContent = '线圈、衔铁和触点现在都停在断电位置。'; return; }
+  const s = STEPS[S.step - 1];
+  $('tipStep').textContent = s.tipTitle;
+  $('tipText').textContent = s.tip + ' ' + s.sound;
+}
+function selectPart(part){
+  if (!PART_INFO[part]) return;
+  S.selected = part;
+  document.querySelectorAll('.hotspot').forEach(h => h.classList.toggle('selected', h.dataset.part === part));
+  $('partIcon').textContent = PART_INFO[part].icon;
+  $('partName').textContent = PART_INFO[part].name;
+  $('partText').textContent = PART_INFO[part].text;
+  $('partFault').textContent = PART_INFO[part].fault;
+}
+document.querySelectorAll('.hotspot').forEach(h => h.addEventListener('click', () => selectPart(h.dataset.part)));
+document.querySelectorAll('[data-part-link]').forEach(el => el.addEventListener('click', () => selectPart(el.dataset.partLink)));
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+  $('tabOverview').hidden = tab.dataset.tab !== 'overview';
+  $('tabSpecs').hidden = tab.dataset.tab !== 'specs';
+}));
+function setFault(name, value){
+  if (name === 'welded') { S.welded = !!value; $('faultWeld').checked = S.welded; }
+  if (name === 'coilOpen') { S.coilOpen = !!value; $('faultCoil').checked = S.coilOpen; }
+  if (name === 'springFatigued' || name === 'spring') { S.springFatigued = !!value; $('faultSpring').checked = S.springFatigued; }
+  beginTransition();
+}
+$('faultWeld').addEventListener('change', e => setFault('welded', e.target.checked));
+$('faultCoil').addEventListener('change', e => setFault('coilOpen', e.target.checked));
+$('faultSpring').addEventListener('change', e => setFault('springFatigued', e.target.checked));
+function resetTour(){ S.step = 0; beginTransition(); updateTip(); }
+function repairFaults(){ S.welded = false; S.coilOpen = false; S.springFatigued = false; $('faultWeld').checked = false; $('faultCoil').checked = false; $('faultSpring').checked = false; beginTransition(); }
+$('resetTour').addEventListener('click', resetTour);
+$('toolbarReset').addEventListener('click', resetTour);
+$('railReset').addEventListener('click', () => { repairFaults(); resetTour(); });
+$('repairFaults').addEventListener('click', repairFaults);
+$('coverToggle').addEventListener('click', e => {
+  const g = $('housingGroup'); const on = g.classList.toggle('coverHidden');
+  g.children[0].style.opacity = on ? .05 : ''; g.children[1].style.opacity = on ? 0 : '';
+  e.currentTarget.classList.toggle('active', on);
+});
+$('labelsToggle').addEventListener('click', e => {
+  const off = $('svgLabels').classList.toggle('labelsHidden');
+  e.currentTarget.classList.toggle('active', !off);
+});
+
+// flow dots
+const dotSpecs = [
+  { path:'controlPathA', count:3, cls:'flowdot', kind:'coil' }, { path:'controlPathB', count:3, cls:'flowdot', kind:'coil' },
+  { path:'loadPathA', count:4, cls:'flowdot load', kind:'load' }, { path:'loadPathB', count:4, cls:'flowdot load', kind:'load' }
+];
+const dots = [];
+for (const spec of dotSpecs) {
+  const path = $(spec.path);
+  for (let i = 0; i < spec.count; i++) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('r', '5'); c.setAttribute('class', spec.cls); c.setAttribute('opacity', '0');
+    $('flowDots').appendChild(c); dots.push({ el:c, path, offset:i / spec.count, kind:spec.kind });
+  }
+}
+function polar(cx, cy, x, y, angleDeg){
+  const a = angleDeg * Math.PI / 180, dx = x - cx, dy = y - cy;
+  return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a)];
+}
+function updateSpring(angle){
+  const [ex, ey] = polar(424, 143, 560, 143, angle);
+  const ax = 463, ay = 74; const pts = [];
+  const n = 14;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n; let x = ax + (ex - ax) * t; let y = ay + (ey - ay) * t;
+    if (i > 0 && i < n) { const dx = ex - ax, dy = ey - ay, len = Math.hypot(dx, dy) || 1; const off = (i % 2 ? 9 : -9); x += -dy / len * off; y += dx / len * off; }
+    pts.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1));
+  }
+  $('springPath').setAttribute('d', pts.join(' '));
+}
+function fmt(v, d){ return Number(v).toFixed(d); }
+function render(out, now){
+  $('progText').textContent = `${S.step} / 4 步`;
+  $('progFill').style.width = (S.step / 4 * 100) + '%';
+  $('statusText').textContent = out.status;
+  const dot = $('statusDot'); dot.className = 'sdot ' + (out.severity === 'bad' ? 'bad' : out.severity === 'warn' ? 'warn' : S.step ? 'ok' : '');
+  STEPS.forEach((_, i) => { const b = $('stepBtn' + i); b.className = 'step ' + (i < S.step ? 'done' : i === S.step ? 'next' : ''); b.disabled = i !== S.step; b.innerHTML = `<span class="n">${STEPS[i].n}</span>${i < S.step ? '✓ ' : ''}${STEPS[i].title}`; });
+  $('gCoilVal').textContent = `${Math.round(out.coilCurrentMa)} mA`; $('gCoilBar').style.width = clamp(out.coilCurrentMa, 0, 100) + '%'; $('gCoilBar').style.background = '#5D8A1E';
+  $('gPullVal').textContent = `${Math.round(out.magneticPull)}%`; $('gPullBar').style.width = clamp(out.magneticPull, 0, 100) + '%'; $('gPullBar').style.background = '#A6CF5F';
+  $('gGapVal').textContent = `${fmt(out.gapMm, 1)} mm`; $('gGapBar').style.width = clamp(out.gapMm / CONFIG.initialGapMm * 100, 0, 100) + '%'; $('gGapBar').style.background = '#16171A';
+  $('gLoadVal').textContent = `${Math.round(out.loadPower)} W`; $('gLoadBar').style.width = clamp(out.loadPower / 120 * 100, 0, 100) + '%'; $('gLoadBar').style.background = S.welded ? '#16171A' : '#16171A';
+  $('rCoilVoltage').textContent = `${fmt(out.coilVoltage, 1)} V`;
+  $('rCoilPower').textContent = `${fmt(out.coilPower, 2)} W`;
+  $('rField').textContent = `${Math.round(out.fieldMt)} mT`;
+  $('rTravel').textContent = `${Math.round(out.travelPct)}%`;
+  $('rSpring').textContent = `${Math.round(out.springLoad)}%`;
+  const energized = out.coilCurrentMa > 2;
+  $('ncIdleCell').classList.toggle('active', !energized);
+  $('ncLiveCell').classList.toggle('active', energized);
+  $('rContact').textContent = out.contactState;
+  $('rLoadVI').textContent = `${fmt(out.loadVoltage, 1)} V / ${fmt(out.loadCurrent, 2)} A`;
+  $('rMotor').textContent = `${Math.round(out.motorSpeed)}%`;
+  $('rIsolation').textContent = S.welded ? '隔离仍在，开关功能失效' : '保持隔离';
+  $('rSides').textContent = `${fmt(out.coilPower, 2)} W / ${Math.round(out.loadPower)} W`;
+  const lab = $('labStatus');
+  lab.className = 'labstatus ' + (S.welded ? 'bad' : (S.coilOpen || S.springFatigued) ? 'warn' : '');
+  if (S.welded) { $('labStatusTitle').textContent = '触点粘连已生效'; $('labStatusDesc').textContent = '看负载侧：即使回到断电，触点仍闭合，电机保持工作。先点“修复故障”再继续导览。'; }
+  else if (S.coilOpen) { $('labStatusTitle').textContent = '线圈开路已生效'; $('labStatusDesc').textContent = '继续推进导览也只能给线圈端子加电压；电流、磁场、衔铁和负载都不会响应。'; }
+  else if (S.springFatigued) { $('labStatusTitle').textContent = '弹簧疲劳已生效'; $('labStatusDesc').textContent = '通电读数不变（100 mA / 120 W），回弹力只剩 44%（健康 80%）。点「回到断电」看释放迟滞：负载多转一会儿才停——粘连是永不停，烧断是根本不转。'; }
+  else { $('labStatusTitle').textContent = '当前无故障'; $('labStatusDesc').textContent = '按导览走完四步，再回来打开故障开关对照读数。'; }
+
+  const travel = out.travelPct / 100;
+  const angle = -7 * (1 - travel);
+  $('armatureGroup').setAttribute('transform', `rotate(${angle} 424 143)`);
+  updateSpring(angle);
+  const [px, py] = polar(424, 143, 630, 143, angle);
+  const bladeY = 252 - 28 * travel;
+  $('pusher').setAttribute('y', (py + 13).toFixed(1));
+  $('pusher').setAttribute('height', Math.max(20, bladeY - (py + 13) + 8).toFixed(1));
+  $('movingBlade').setAttribute('transform', `translate(0 ${(-28 * travel).toFixed(1)})`);
+  $('fieldArcs').setAttribute('opacity', (out.magneticPull / 100 * .9).toFixed(2));
+  $('fieldArcs').setAttribute('stroke-dasharray', '7 8');
+  $('fieldArcs').setAttribute('stroke-dashoffset', (-now / 45).toFixed(1));
+  $('coilBreak').setAttribute('opacity', S.coilOpen ? '1' : '0');
+  $('weldBlob').setAttribute('opacity', S.welded ? '1' : '0');
+  $('contactGlow').setAttribute('opacity', out.contactClosed ? '.85' : '0');
+  $('controlSwitch').setAttribute('transform', out.commanded ? 'rotate(0 198 552)' : 'rotate(-24 198 552)');
+  $('motorRotor').setAttribute('transform', `rotate(${(now / 1000 * out.motorSpeed * 3.6) % 360} 845 294)`);
+  $('svgControlCurrent').textContent = `线圈电流 ${Math.round(out.coilCurrentMa)} mA`;
+  $('svgLoadCurrent').textContent = `负载电流 ${fmt(out.loadCurrent, 2)} A`;
+  for (const d of dots) {
+    const active = d.kind === 'coil' ? out.coilCurrentMa > 2 : out.loadCurrent > 0.05;
+    if (!active) { d.el.setAttribute('opacity', '0'); continue; }
+    const len = d.path.getTotalLength();
+    const pt = d.path.getPointAtLength(((now / 1500 + d.offset) % 1) * len);
+    d.el.setAttribute('cx', pt.x); d.el.setAttribute('cy', pt.y); d.el.setAttribute('opacity', '.95');
+  }
+}
+function tick(now){ display = currentOutput(now); render(display, now); requestAnimationFrame(tick); }
+function setScenario(next){
+  S = { step:clamp(next.step ?? S.step, 0, 4), welded:!!next.welded, coilOpen:!!next.coilOpen, springFatigued:!!next.springFatigued, selected:next.selected || S.selected };
+  $('faultWeld').checked = S.welded; $('faultCoil').checked = S.coilOpen; $('faultSpring').checked = S.springFatigued;
+  selectPart(S.selected); beginTransition(); updateTip();
+}
+selectPart('coil'); updateTip();
+const nowDate = new Date();
+$('dateLine').textContent = new Intl.DateTimeFormat('zh-CN', { month:'long', day:'numeric', weekday:'short' }).format(nowDate);
+$('clockLine').textContent = '剖面 · 模型 · 故障';
+// U7 互动题：凭读数组合区分粘连与烧断。正确答案 coilOpen（有电压、无电流、触点分开、负载 0 W）。
+let quizState = { answered:false, correct:false, attempts:0 };
+function answerQuiz(answer, btn){
+  quizState.attempts += 1;
+  const fb = $('quizFeedback');
+  fb.hidden = false;
+  if (answer === 'coilOpen') {
+    quizState.answered = true; quizState.correct = true;
+    document.querySelectorAll('.qopt').forEach(b => { b.classList.toggle('right', b === btn); b.classList.remove('wrong'); b.disabled = true; });
+    fb.className = 'quizfb ok';
+    fb.textContent = '答对了：线圈烧断。关键组合是「命令已下达、有 12.0 V 电压、却 0 mA 电流」——绕组开路，磁场建立不起来，触点只能分开、负载 0 W。去实验室打开「线圈烧断」再推进四步，读数会和题里一模一样。';
+  } else {
+    fb.className = 'quizfb no';
+    btn.classList.add('wrong');
+    fb.textContent = '不对，这组读数不是触点粘连。粘连的组合恰好相反：控制侧断电（0 V / 0 mA）时触点仍闭合、负载仍有 120 W——是「命令撤了、负载不停」。本题是命令已下达、有电压却没有电流，电流进不了线圈。再看一眼读数，重新选。';
+  }
+  return quizState.correct;
+}
+document.querySelectorAll('.qopt').forEach(b => b.addEventListener('click', () => answerQuiz(b.dataset.answer, b)));
+
+// U2 自动演示：约 8 秒走完四步（通电→磁吸→触点闭合→负载工作），再停回待机。
+let demoRunning = false, demoTimers = [];
+function playDemo(){
+  if (demoRunning) return false;
+  repairFaults(); resetTour();
+  demoRunning = true;
+  document.body.classList.add('demo-running');
+  const btn = $('demoBtn'); btn.disabled = true; btn.textContent = '演示中 · 正在工作…';
+  const at = (ms, fn) => demoTimers.push(setTimeout(fn, ms));
+  at(600, () => advanceStep(0));
+  at(2200, () => advanceStep(1));
+  at(3800, () => advanceStep(2));
+  at(5400, () => advanceStep(3));
+  at(7400, () => { resetTour(); });
+  at(8300, () => {
+    demoRunning = false; demoTimers = [];
+    document.body.classList.remove('demo-running');
+    btn.disabled = false; btn.textContent = '▶ 先看它工作一次';
+  });
+  return true;
+}
+$('demoBtn').addEventListener('click', playDemo);
+window.__relay = { CONFIG, STEPS, relayModel, getState:() => ({...S}), getDisplay:() => ({...display}), advanceStep, setScenario, setFault, resetTour, repairFaults, selectPart, playDemo, isDemoRunning:() => demoRunning, answerQuiz, getQuizState:() => ({...quizState}) };
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
