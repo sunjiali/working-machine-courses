@@ -332,7 +332,9 @@ button{font-family:inherit;}
   .rspacer{flex:1;}
   #main{padding:10px;}
   #topbar{flex-wrap:wrap;}
-  .statusbar{flex-wrap:wrap;}
+  .statusbar{flex-wrap:wrap; flex:1 1 auto; min-width:0;}
+  .statusblock .sb-sub{white-space:normal;}
+  .statusrow{white-space:normal;}
   #middle{grid-template-columns:1fr;}
   #stage{min-height:330px; height:52vh;}
   #rightcol{min-height:0;}
