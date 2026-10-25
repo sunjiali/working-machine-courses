@@ -231,3 +231,45 @@ Robin 验收后两点返工：①工程「并不是一个完整的 Vite 项目�
 - 舞台：去掉蓝边框与底卡渐变（画布直浮纸面）；提示改底部中央藏青胶囊；工具条改 viewbar 规格（r11、SVG 图标、分隔线、拓扑图标钮）；小地图删除（样板无）；分解条改 viewbar 同语言；背景网格改菱格 + 角落电路走线 SVG 装饰；Scene 背景/fog 色对齐 #F6EDDD。
 - 轮播：行首「课程 · Lessons」标 + 横向滚动行 + 线稿 SVG 缩略图（6 张，自绘服务器题材）+ 完成 8px 小点 + › 箭头；选中卡钢青 2px 边 + 环。
 - 拓扑视图：面板/节点/流线配色并入新 token；右下 @robin_playbooks 角标保留（Robin 既定要求），左栏署名条与之呼应。
+
+### 部署切换与完整性验证（A 续，2026-10-25）
+- 阶段一 commit cf537d3：源码 + docs + 字体 + `.github/workflows/pages.yml` 入仓，根 index.html 暂留旧构建产物、Pages 仍走分支 → push 触发 run 40168699534 与手动 dispatch 均全绿（build + deploy job 成功）。
+- API 将 Pages `build_type` 切为 `workflow`；切换后 +7/+14/+21s 探针均 200（由上一份 Actions 部署顶着，零中断）。
+- 阶段二 commit 1552c71：根 index.html 换源码入口、删除根 assets/ 与 relay/ → run 40168797941（build 19s + deploy 10s）全绿。线上现服务 Actions 构建产物。
+- 移动端修复 commit 7bdd387（见回归节）→ run 40172492871 全绿。
+- **全新克隆验证**（/tmp/wmc-clone-test）：git clone → npm install ✓ → `npm run dev` 冒烟 ✓（标题正确、/src/main.jsx 200）→ `npm run build` ✓（JS 资产哈希 index-BIu1P6B-.js 与当时线上完全一致）→ vite preview curl / 与 /relay/ 均 200 → 无头打开构建产物（file://；本机 Chromium 的 Local Network Access 策略硬拦 localhost 预览 URL，disable-features 亦无效）：默认 254/52.7/10841、17 部件齐、load 85 → 322/64.4/14689、0 控制台错误。
+
+### 逐元素对齐表（B 验收）
+| 元素 | 结论 | 说明 |
+|---|---|---|
+| 字体/颜色 token/圆角/描边 | 对齐 | 自托管同族字体；token 全量换成样板实测值（底 #F6EDDD、藏青 #18213D、青绿 #1AA3A1、钢青 #3F7F8E 等） |
+| 左栏 62px + 署名条 + X 图标 | 对齐 | 署名对象换成 x.com/robin_playbooks（学样板习惯） |
+| 顶栏品牌 + 状态条 + 进度卡 + 等宽时钟 | 对齐（1 处差异） | 状态条比样板宽：多「整机状态 + 导览步数」块，内容需要 |
+| 舞台无边框、提示胶囊、viewbar | 对齐 | 小地图按样板删除；保留编号点（样板无——我方点击题与导览依赖） |
+| 信息卡 410 + tab 下划线 + 内胆 | 对齐 | tab 收为 概览/规格 2 个（样板 4 个，我方内容量如此） |
+| 实验室 code-card 语言 | 对齐 | 浅色内胆、幽灵钮、藏青运行钮、RAID 盘位浅色化 |
+| 事件日志 | 差异（有意） | 样板是贴在代码卡下的 console 条；我方为右列第三张独立卡（信息量更大，语言已同化） |
+| 分解条 | 差异（有意） | 我方独有控件，已用 viewbar 同语言 |
+| 课程轮播 | 对齐（2 处小差异） | 左右双钮常驻（样板仅右钮、疑似悬停出现）；缩略图为自绘线稿（样板是 3D 渲染小图） |
+| 背景网格/走线 | 近似 | CSS 菱格 + 4 处角落走线 SVG；样板是整幅 SVG 等距网格 + 走线 |
+| 3D 场景环境 | 差异（有意，Robin 上轮认可） | 保留机房微缩环境；样板是板子直接浮在纸面 |
+| 标题字距/日期字号 | 小差异 | 字距略小（CJK 混排防溢出）；日期 15px（样板 17.5） |
+
+并排对照图与截图证据：`~/workspace/server-hardware-course-artifacts/quality-evidence/build/`（side-by-side-final.png、live-1440x900.png、live-topo.png、mobile-390-fixed.png、parts-shots/、sample-1440x900.png）。
+
+### 回归（C，2026-10-25 本轮最终版脚本实测）
+- 本地（dist，修正版脚本 regress_final）：23 项中 21 PASS；2 项当场处置——① explode 固定 2.5s 读数为 0（后以轮询探针复测：0.912 @41s，见下）；② **移动端 390 横向溢出（真 bug）**：.statusbar flex:none + .sb-sub nowrap 长句把盒子撑到 444–526px → 已修（≤900 时 statusbar flex:1 1 auto + min-width:0、sb-sub/statusrow 允许换行），复测 sw=390=iw、0 错误，截图 mobile-390-fixed.png。
+- 线上（regress_final_live，部署后）：23 项中 22 PASS，唯一 FAIL 同为 explode 固定读数窗；**轮询探针线上复测 0.9119 @46s**（与本地同值，阻尼确定性），机制确认无误——该动画在 SwiftShader 下帧率受限（真实 GPU 约 1s 到位），脚本固定 2.5s 读数不适配软件渲染，特此注明而非粉饰。
+- 相机口径更正（重要）：导览 advanceStep 自原单文件版起就飞向 PARTS[part].cam（源码双侧核对一致），本轮初版脚本误用 STEPS.cam 作预言机导致假 FAIL；修正预言机后本地 tourcheck 6/6 步精确收敛到定版机位（容差 0.09 内）、线上回归同项 PASS。应用行为从未改变。
+- 答题类读数同为 SwiftShader 时序敏感：MCQ 反馈需 ≥1300ms 等待（300ms 读空是测量假象，探针复测答错 ✗ / 答对 ✓ / lessonDone / 进度 1/6 俱全）。
+- 部件覆盖率补测（17 部件点选→相机→文案→占屏）：15/17 ≥ 0.55；cmos 0.20、boss 0.23 未达线——与上轮已知值分毫不差（真机比例极小且位于风扇墙后，现为拆盖俯视特写），沿袭待 Robin 定夺（激进特写方案未动）。
+- 基线全链（本地 + 线上各一遍）：默认 254W/52.7°C/10,841 RPM；满载 322W/64.4°C/14,689 RPM；风扇故障 14,800 RPM/77.2°C；RAID 降级 314W → 重建 → 在线 → 双盘失效 307W → 复位在线；事件日志 18 行含 POST 与磁盘行；拓扑打开且 @robin_playbooks 角标在；分享链接 ?lesson=3&step=2 落点正确；localStorage 持久化（load=33）复读一致；线上 0 控制台错误。
+
+### 演示片影响
+- 本轮 UI 大改后，演示片 v3 与现行 UI 的差距进一步扩大（除上轮已记的 4 处帧段外，整套 chrome 已换样板语言）。是否重录待 Robin 定，本轮未动录制管线。
+
+### 复盘（本轮）
+1. 做对了：样板盘点先行（实机截图 + DOM/computed-style 采样落表）再动手改 UI——改完逐元素有据可查，没有靠目测「差不多」。
+2. 翻车：回归脚本的相机预言机用错（STEPS.cam vs PARTS[part].cam），先后制造了假 PASS 与假 FAIL 两轮噪音；根因是没先读原版 advanceStep 的调用链就写断言。教训：写验收断言前先读被测代码的真实数据流，预言机必须来自实现而非字段名直觉。
+3. 翻车：SwiftShader 时序三连（MCQ 300ms、相机 60s、explode 2.5s 固定读数全数误判）——根因是把「固定等待 + 单次读数」当验收法。已沉淀：软件渲染下动画/飞行类断言一律轮询到阈值或超时，等待下限 MCQ ≥1300ms、相机 ≥120s、explode ≥90s。
+4. 意外收获：全量回归逼出一个真 bug（390px 状态条溢出）——样板复刻时只对了桌面几何，移动端是靠回归兜住的。
