@@ -322,7 +322,7 @@ Robin 验收意见：组件效果差点意思，要像参考站 Learn Arduino �
 ### 验收
 - **特写对照**：17 部件 + 全景，before/after 同机位同光照双侧拍摄齐全（标准 harness，手动 frameloop）；partScreen 占屏值 before/after **逐项一致**（如 board .90×1.23、psu 1.02×.47、cmos .10×.20、boss .09×.23），机位零改动有数值实证；errors 全程 none。原始图打包 9 个 zip（after a1–a6、before b1–b3；改前另 9 张为本轮开工时存档），链接随交付报告给出（存储链接 24h 有效）；全分辨率目视已核 after-board：走线/过孔/丝印可读且不镜像、riser 分段金手指、DIMM 乳白卡扣、PSU 条码标签均成像。拼册脚本：artifacts `quality-evidence/realism/work/assemble.py`。
 - **全量回归**（新 dist，脚本实测 20 项）：满载 **322W/64.4°C/14,689 RPM**、风扇故障 14,800 RPM/77.2°C、RAID 降级 314W→重建完成→在线 322W→双盘失效 307W/bad→复位 322W、开机导览 7 步、click 题、MCQ（点课程卡→DOM .opt）、拓扑署名 @robin_playbooks、分解 >0.95、localStorage 保存/跨刷新存续、分享链接 ?lesson=3&step=2 落点、390px 无溢出、**0 控制台错误**——19 项 PASS；余 1 项「事件日志」由静态证据复核通过（ConsoleCard 已挂载 App.jsx:129；logEvent wired 于 store 状态 diff，含 POST/拔盘/重建行；回归全程触发相关路径且 0 错误；原检查用 innerText 搜标题的探法在该列隐藏态下读不到，属探法缺陷而非功能缺失）。另：模型默认基线经纯函数直算复核——machineModel(默认 S, load=60) = **254W/52.7°C/10,841 RPM**，与上轮记录一致；页面冷启动读数 275W/54.8°C 系初始导览步态应用后的 effLoad=40，与本轮无关（逻辑文件零改动，git diff 可证）。
-- **线上复验**：（部署后补记于本节）
+- **线上复验**（2026-10-25 22:2x，commit 7123657，Actions run 40199932775 success）：HTTP 200；线上 JS 资产 `index-2M4QRgbA.js` 与本地构建哈希一致；无头 Chrome 经本地代理实测——导览满载工况点（load=85，即 STEPS 终步 apply 的口径）读数 **322W/64.4°C/14,689 RPM**，与 machineModel 纯函数直算逐位一致；load=100 时 353W/76°C/14,800 RPM 同为模型确定性输出（温控 duty 饱和），非本轮引入；**0 控制台/页面错误**。
 
 ### 残余差距（如实，不自称达标）
 - 走线为程序化 45° 规则布线，密度与有机感仍低于样板（样板走线更密且有网络分区感）。
