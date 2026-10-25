@@ -48,8 +48,8 @@ function Lights() {
       <hemisphereLight args={[0xffffff, 0xcfc4a4, 0.5]} />
       <directionalLight position={[6, 10, 5]} intensity={2.3} color={0xfff1dd} castShadow
         shadow-mapSize={[REC_MODE ? 1024 : 2048, REC_MODE ? 1024 : 2048]}
-        shadow-camera-left={-7} shadow-camera-right={7}
-        shadow-camera-top={7} shadow-camera-bottom={-7}
+        shadow-camera-left={-6} shadow-camera-right={6}
+        shadow-camera-top={6} shadow-camera-bottom={-6}
         shadow-camera-near={2} shadow-camera-far={30}
         shadow-bias={-0.0004} shadow-normalBias={0.02} />
       <directionalLight position={[-7, 4, -6]} intensity={0.4} color={0x0D9488} />
